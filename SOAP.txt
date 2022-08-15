@@ -1,0 +1,32 @@
+SOAP -simple object access protocol--standard lightweight communication protocol for XML based message exchange, it can use HTTp,SMTP,FTP for transfering data
+XML - eXtensible Markup Language
+XSD - XML Schema Definition   .xsd document describes the struture of XML document or WSDL document.the purpose of xsd doc is to define legal building blocks of an XML document.
+	  may be contains the data types to send in request and the ones which we get in responce.
+WSDl -  Web Services Description language. it is XML file that describes the technical details of how to implement a web service  i.e. URI,port,method names,arguments, data types.
+UDDI - Universal Description, Discovery and Integration. It is XML based framework for describing,discovering and integrating web services.UDDI is a directory of web service 
+       interfaces described by WSDL containing information about web services.
+SEI - Service Endpoint Interface. It is at client end.It is a class tht defines the methods to be exposed as a web service.It converts web service methods to SOAP message.
+SIB - Service Implementation Bean/ Class /Server class. It handles the actual SOAP requests.It is at server end.It implements the SEI.It can either be POJO or stateless session EJB.
+		the names of these classes are based on the names of the nucleus method being exposed. e.g. ig nucleus method is GetOrderStatus then SEI name is GetOrderStatusSEI
+		and the implementation class name is GetOrderStatusSEIIMPL.
+		
+Below 3 APIs are used to develp SOAP web services
+1. JAX-WS API (Java API for XML Web services)
+2. JAX-RPC API(for Remote procedure calls)
+3. JAX-M API (for XML Messaging)
+all these API are given by SUN to implement web services.these are just specifications.these API contain just interfaces of Abstract classes meaning only definitions and not 
+implementations.
+Their implementations are given by many third party vendors.
+
+1. JAX-WS API vendors list as follows :
+	1. JAX-WS reference implementation by Sun
+	2. Metro implementation
+	3. AXIS 2 implementation  4. ApacheCXF implementation   5. Weblogic implementation  6. Websphere implementation    7. JBOSS implementation   8. GlassFish Implementation
+	
+2. JAX-RPC API vendors list as follows :
+	1. JAX-RPC Sun implementation   2. AXIS 1 implementation   3. Weblogic implementation   4. Websphere implementation   5. JBOSS implementation
+	
+3. JAX-M API 
+
+Proxy based client : if web service client is generating stubs(or proxies) at the client side and client uses it to invoke the WS then it is called proxy based client.
+DII client : Dynamic Invocation Interface . Here client never created stubs, instead API provider gives stubs to call WS.

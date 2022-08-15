@@ -1,0 +1,444 @@
+
+docker creds
+akshaysurya2595@gmail.com;    userid:akshaysu;Ray@Donovan22
+use these creds to run docker online as local is having issues
+
+
+docker commands
+
+docker --help
+docker -v 
+docker images
+docker ps     list all current running containers
+docker ps -a       list history 
+docker pull <application-image-name>:<version>    is version is not specified the latest will be pulled from docker hub
+docker run -d redis    will return the full continerid where redis is running and run the app in detached mode
+docker run -p<hostport>:<containerport> <application-image-name>      this will bind the given container port of the app to the host machine port so that we can expose that host port
+docker start <containerid>   start and stop commands work with containersm it will start or stop existing container
+docker stop <continerid>
+docker logs <continerid>   same thign can be done using name of the container
+
+docker run -d -p6001:6379 --name <customer-container-name> <app-image-name>  this will start container in detached mode for app image with given name and will bind host port to container port 
+
+docker exec -it <containerid> /bin/bash   it will given me interactive access to inside the containerid : basically it will be contianer file system
+
+
+docker udemy
+docker build .    -> this will build the application image based on the dockerfile on the pwd
+then we can select run the image by -> docker run <imageid or name>
+
+container is the unit of software which we finally run
+image is the template or bueprint ehich contains code + required tools and the runtimes like jvm or node
+so basically we can use a single image to create and run multuple containers; containers are running instances of image
+in order to run our own application image we need to build our app image using docker file based on another librabry images
+
+
+stopping and starting containers
+docker run -p<hostport>:<containerport>  -d <application-image-name>    run in detached mode
+docker attach containerid    ->we willl be attwched to the container again and can see the logs
+docker logs cid    -> see all the logs of the container then it exits that log shell
+docker logs -f cid    -> similar to attach mode, means we can see the logs and will be in terminal  (similar to run command)
+docker start -a cid     ----> will run in attached mode
+docker run -it cid    -> run in interactive mode if we need to submit input  ->keep STDIN open even if not attached with -i and with -t it gives pseudo-TTY
+docker start -a -i cid  -> will run in attched and in interactive mode
+
+delete container and images
+docker rm cid or name    -> this will remove or delete the conatiner, but if container is running it will give error, then u will need to stop it first then remove
+							we can pass multiple cids with space in rm commmand 
+							
+docker images     will list all images
+docker rmi imagename or imageid     -> to remove images and layes inside an images, but the image will be reomoved if it does not have any running or stopped container associated 	with  it, means even if there is stopped container using that images... we will have to remove container first then the image
+
+docker image prune   -> will remove all unused images without tags
+docker image prune -a   -> remove all unused images include which have tages
+
+docker run --rm imageid    -> this will sart the caontainer but it will remove the container automatically when it is stopped
+
+docker image inspect imageid    -> it wil give all  info about image
+
+
+copying files into and from container
+docker cp source_path cid:/path_inside_container    -> copies from local to container
+docker cp cid:/path_inside_container local_source_path  -> copies from the container
+
+nameing conatiner and images
+docker run --name <new_container_name> imageid    -> assign custom name to container
+
+images have namg:tag convention   name will be repository name and tag will be any version if we want to nspecify tag is optional
+docker build -t newname:new_tagename .    -> create images with given name and tag
+
+
+
+
+types of data in docker 
+application data--->code + environment  -> this is stored in the image and is read only
+temporary data --> e.g user input, fetched/produced in running container,stored in memory   -> is stored in container and is read/write
+permanent data --> e.g user accounts, fetched/produced in running container,stored in files or db, should not be lost on container restart
+					it is read write accessible , hecne with store it in containers but with the help of VOLUMES
+					
+VOLUMES:
+volumnes are the folders on your host machine which are mounted (made available, mapped ) into containers , we make docker aware of those folders or space and container uses it
+and are then mapped to folders inside the containers.Container can read/write data from and to volume
+
+TWO types of externall data storages
+1. VOLUMES: managed by docker
+		a. anonymous volumes --> we dont know location on out local, and will erase data on container removal/shutdown
+		b. named volume --> we dont know location but great for data which we do not access/edit directly, as these are not deleted on container shutdown
+				docker volume ls   -> list all vaolumes	
+				named volume can be created like this -> docker run -p 80:80 -d --name mycontainer -v <new_volume_name>:<path_used_in_app> -t myappname:appTagName  
+				now when we shutdown above container and ru a new container with same volume name the old data will exist there
+				docker volumne rm vol_name or docker volume prune  --> will delete volume
+		
+2. BIND MOUNTS:managed by developer
+	you define a folder/path on host machine. great for persistent/editable data/source code
+	docker run -p 80:80 -d --name mycontainer -v <local_machine_accessible_path>:<path_used_in_app> -t myappname:appTagName   -> create volume with local location
+	or use  -v "%cd%":/app   -> this will take path as current directory	-p
+	
+	
+ARGuments and ENVronment vars
+docker supports build time arguments and runtime env vars
+we can set ARG in in image build with --build-arg,also available in dockerfile
+ENV--> available inside docerfile & in app code,use ENV in dockerfile and --env on docker run
+we can set it in dockerfile like
+ENV PORT 8080
+EXPOSE $PORT
+or while running the container like   --env PORT=8080  or -e PORT=8080
+OR  with file like --env-file ./.env
+
+One important note about environment variables and security: Depending on which kind of data you're storing in your environment variables, you might not want to include the secure data directly in your Dockerfile.Instead, go for a separate environment variables file which is then only used at runtime (i.e. when you run your container with docker run).Otherwise, the values are "baked into the image" and everyone can read these values via docker history <image>.
+For some values, this might not matter but for credentials, private keys etc. you definitely want to avoid that!
+If you use a separate file, the values are not part of the image since you point at that file when you run docker run. But make sure you don't commit that separate file as part of your source control repository, if you're using source control.
+
+
+NETWORKING WITH CONTAINERS
+case 1: app inside container has API which internally calls any external web API hosted on internet --> works fine without any hasstle, just publish container port with localhost port
+
+case 2: app inside the container wants to talk to the host machine like local database--> in this case we need to change in our code where we are pointing to localhost service using
+		any url like http://localhost:3306/mysqldb to -->http://host.docker.internal:3306/mysqldb   --> this is recognized by docker and the ip is resolved to localhost machine or the machine where docker is hosted, and then build and deploy the container
+		
+case 3: code in app inside one container A wants to call API which is inside app hosted on container B (basically using REST API call to another service hosted on container B)
+        ---->solution 1 : inside app container A make code change 
+						http://localhost:port/<service_on_B>   --> http://<IPAddress_of_container_B>:port/<service_on_B>   --> get this ip from docker container inspect containerB then search in network settings
+			solution 2: use container network  -->for that u need to create a network first and then run containers with that network name
+				steps 1 : docker network create mynetwork --driver drivername   ---> driver is optional , by default bridge driver is assigned
+					  2 : run container B with some name
+					  3 : then put container B's name in api call (replace container B's ip with container B's name http://mysql:3306/mysqldb) then build app API
+					  4 : then run container A
+
+Docker Networks actually support different kinds of "Drivers" which influence the behavior of the Network.
+The default driver is the "bridge" driver - it provides the behavior shown in this module (i.e. Containers can find each other by name if they are in the same Network).
+The driver can be set when a Network is created, simply by adding the --driver option. docker network create --driver bridge my-net
+Of course, if you want to use the "bridge" driver, you can simply omit the entire option since "bridge" is the default anyways.
+Docker also supports these alternative drivers - though you will use the "bridge" driver in most cases:
+host: For standalone containers, isolation between container and host system is removed (i.e. they share localhost as a network)
+overlay: Multiple Docker daemons (i.e. Docker running on different machines) are able to connect with each other. Only works in "Swarm" mode which is a dated / almost deprecated way of connecting multiple containers
+macvlan: You can set a custom MAC address to a container - this address can then be used for communication with that container
+none: All networking is disabled.
+Third-party plugins: You can install third-party plugins which then may add all kinds of behaviors and functionalities
+As mentioned, the "bridge" driver makes most sense in the vast majority of scenarios.
+
+
+DOCKER-COMPOSE
+docker compose is substitues to docker build and run commands,also it can build and run and shutdown multiple containers at same time, also --rm is by default
+Installing Docker Compose on Linux
+On macOS and Windows, you should already have Docker Compose installed - it's set up together with Docker there.
+On Linux machines, you need to install it separately.
+These steps should get you there:
+1. sudo curl -L "https://github.com/docker/compose/releases/download/1.27.4/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+2. sudo chmod +x /usr/local/bin/docker-compose
+3. sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose
+4. to verify: docker-compose --version
+Also see: https://docs.docker.com/compose/install/
+
+docker -compose file looks like this, it is yaml/yml file so syntax needs to be followed strictly, we can use # sign to comment line in yml
+
+version: "3.8"   --> version of dcoker compose to be used, features and syntax provided by docker compose may change with version
+services:         ---> services simply mean containers
+  mongodb:        ---> multiple container names may follow and belw each container name there will be configs related to that container
+    image:"mongo"     ---> specifies the image name from which container is supposed ot be built, it could be official docker image or custom image to be built by us
+	  volumes:        
+	    - data:/data/db      --> we can specify named volumes and bind mounts here, if we want common volume for multiple images then additional  volumes tag also be needs to 		  
+		                         be written parallen to image tag
+	  environment:
+	    MONGO_INITDB_ROOT_USERNAME: akshay     -> we can specify env vars like this as key value pair or using = sign
+	  env-file:
+	    - ./mongoenv/mongo-env-file
+	  networks:
+	    - mynetwork
+  myproject:
+    image: "myproject_container_name"
+  
+  backed-project:
+    build: ./backend    -> path of project root folder where dockerfile is present, or u can use below full version for build tag
+	#build:
+	#  context: ./backend
+	#  dockerfile: Dockerfile    -> specify dockerfile path  --> use this only if dockerfile is present at different path other wise it takes default path(context path)
+	#  args:
+	#    some-arg: blabla
+	
+	ports:
+	  - "3000:8080"    -> hostpor:containerport
+	  - "8083:8083"
+	volumes:
+	  - logs:/app/logs   ->names volume
+	  - relativepath:/app   ->bind mounts
+	  - /app/modules      -->anonymous volume
+	env-file:
+	  - ./env/node-env    ->env file path
+	depends_on:    --->list the names of the  containers on which this container depends
+	  - mongodb
+	
+  front-end:
+    build: ./frontend   -> for docker to locate the Dockerfile
+	stdin_open: true    -> this and tty option is substitue for -it command that is interactive mode
+	tty: true
+	depends_on:
+	  - backend
+  
+docker compose will create above containers with names like docker-complete_mongodb_1,docker-complete_myproject_1 where docker-complete is the root folder name
+otherwise we can force the container name using container_name: mongodb tag paraller to image tag
+by default docker creates a new network and adds all the containers in the same network and deletes the network when we do docker-compose down	
+after the whole file is written we can use docker-compose up  command to start the containers and also pull ans build the images, this will run in attach mode and if we do ctrl ^c 
+then it will stop the process and containers will be shutdown, network will be deleted, images will be deleted , only volumes will remain the same
+docker-compose up -d   - > start in detach mode, 
+docker-compose down    ->it will stop the process and containers will be shutdown, network will be deleted, images will be deleted(not sure) , only volumes will remain the same
+docker-compose down -v   -> this will delted volumes also
+
+everytime we run docker-compose up again and again, docker only build images again which has some code changes otherwise it will not rebuild the image
+docker-compose build   -> forcefully build all custom images and not start the containers
+
+UTILITY CONTAINERS:
+just like we run an image of app in a container , we can just run an environment in a container like node environment ,also then we can execute commands against that container
+containers like this we can call them utility containers.. this is not an official name
+docker exec -it nodeContainer npm init     -> here we can use exec to run commands inside node container in interactive mode,here npm init is the command
+docker run -it node npm init    -> override the default command when we run the container
+
+docker-compose run myproject    --> we can run a single container/service from docker-compose file
+When working with "Utility Containers" on Linux, I recommend that you also take a closer look at this very helpful thread in the Q&A section: https://www.udemy.com/course/docker-kubernetes-the-practical-guide/learn/#questions/12977214/
+
+This thread discusses user permissions as set by Docker when working with "Utility Containers" and how you should tweak them.
+
+docker-compose up -d --build service1 service2    -> it will build the services then run
+we can add entrypoint in docker-compose file entrypoint: [commands]    -> parallel volumes and build tag
+working_directory: tag also
+
+DEPLOYING ON EC2 INSTANCE ON AWS; 
+ec2 instance, virtual public cloud VPC, securoty group to restrict access to ec2 instance
+
+Installing Docker on Linux in General
+In the last lecture, you saw the AWS-specific command for installing Docker on a Linux machine:
+amazon-linux-extras install docker
+Of course you might not always want to install it on a AWS EC2 instance though - maybe you are using a different provider.
+In that case, you can always follow the Linux setup instructions you find on the official Docker page: https://docs.docker.com/engine/install/ (under "Server").
+
+############################################################################################################################################################################
+KUBERNETES
+K8s is an opensource system for automating deployment, scaling and management of containerized apps
+so while using kubernetes we can define things generically for deployment irrespective of which deployment provider like AWS,azure or GCP we use
+
+in k8s the smallest possible unit for deployment is a pod(container or multiple containers)
+and these pod/pods run inside a worked node, so worked node is like a virtual machine/or virtual instance, so in AWS we can say one EC2 instance is a worker node
+every worker node has a proxy/config which is a tool used to manage network traffic to that pod
+so k8s creates or removes number of pods for an app based on the situation like high traffic or pods/containers going down that is auto scaling,all of this is done by 
+master node or the control plane, so master node controls your deployment
+and this multiple worked nodes and a master node combiningly form or are called one cluster . So k8s tells the chosen cloud provider that create this kind of cluster and manage 
+it like i(kuberneter) told u
+
+WORKER NODE
+kubelet is the service we need to install for k8s , it handles the communication between master and worker nodes
+kube-proxy handles the managed node and pod network communication
+both kubelet and kube-proxy are running inside a worker node
+
+MASTER NODE
+API Server -> API for the kubelets to communicate with each other
+SCheduler -> watches for new pods,selects the worker nodes to run on them
+Kuber-controller manager --> watches and controls worked nodes,correct number of pods and more
+Cloud-controller-manager --> it is similar to cuber-controller manager but for a specific cloud provider, knows how to interact with cloud provider resources
+
+services in the k8s are a logical set of pods with a uniques,pod- and container independent IP address--> means are used for exposing pods to the outside world for communication
+
+additionally we need to install kubectl  --> a tool for sending instructions to the cluster (eg. a new deployment, create new pods)
+
+for local system we can use minikube to replicate cluster functionality--> it runs a single node k8s cluster inside VM on ur PC for developers
+after installing minikube when we run minikube start --driver=virtualbox or docker     ---> this will install masternode and worked node and will install API server for master node
+if above command gives error bcz it conflicted with virtualbox as hipervsor we can now create our cluster using minikube using th hypervisor using below command but first delete
+the already created cluster by ---> minikube delete
+
+then do minikube start --driver=hyperv    -->this will create vm on ur local machine and allocate 20gb space and 3gb ram to that vm from ur C drive
+then we can do minikube status and it hould return us services that are running fo k8s
+after this we can do minikube dashborad this will open dashboard on browser to see out k8s pods and all things
+
+k8s works with objects like pods, deployments, services,volumes etc
+these objects can be created in 2 ways  -> imperatively and declaratvely
+
+THE POD OBJECT
+contains and runs one or mode containers -->mostly one container per pod
+pods contain shared resources for all pod containers like volumes
+pod has a cluster internal IP address, containers inside a pod can communicate via localhost 
+pods are designed to be ephemeral(transient or shortlived):k8s will start,stop and replace them as needed
+
+THE DEPLOYMENT OBJECT
+deployments manage a pod for u, u set desired state then k8s does everything to achive that state, deployments can be paused deleted and rolled back, can be scaled dynamically
+they manage a pod for u , so u dont directly control pods instead use pods to set up the desired end state
+
+kubectl get deployments   -> returns all the created deployments
+kubectl get pods    --> return all the created pods
+kubectl create deployment <deployment_name> --image=<img_name_for_which_depl_needs_to_be_created>    -> this will create deployment for this image with a pod after pulling it from 
+dockerhub hence the specified images needs to be on dockerhub... we can see this deployment and pod in minikube dashboard
+so thie above create command uses the minikube cluster and creates master node(control plane) , then schedules analyses the already running pods and finds the bes worker nodefor this new pod---> here inside the worker node the kubelet service manages the pods and containers
+
+SERVICE OBJECT
+in order to communicate with the deployed pods we need service object
+it is responsible for exposing the pods to other pods in the cluster or to the external world
+pods have internal IPs by default when they are created bu these IPs keep changing so we can use service here as service assigns an IP to a group of pods(service groups pods with a
+shared IP) and now this IP wont change even if we add more pods to that service or remove pods from that service
+now this service can expose pods to external world as well as to other clusters(default is internal only but we can override)
+without services pods are very hard to reach and communication is difficult
+
+now we have to expose the pods to external world or to other cluster by creating service---> do below steps these steps will implicitly create service and expose pods
+kubectl expose deployment <depl_Name> --type=<expose_type> --port=<port_where_container_service_is_running>
+here expose_tyoes can be 
+1. ClusterIP=expose to other cluster only not to external world
+2. NodePort= expose with worker node IP and port to external world
+3. LoadBalancer = here the minikube Vm has to have loadbalancer and it will generate unique IP for  pod and also load balance he pods
+e.g. kubectl expose deployment techstackdemod --type=LoadBalancer --port=8084
+now we can chek the created service --> kubectl get services
+now here in this output the externla_IP tag would always be pending for our service bcz currently it is on VM of our local machine so to generate external IP out of this
+service use ----> minikube service <service_name>    -> now we can use IP in this output to hit to out API of the app in the pod
+
+now if any of the pod/pods fail due to any error mostly runtime errors in the app the pods wil be restarted by k8s and the RESTARTS flag in the get pods command will be updated
+as number of restarts values
+
+SCALING:
+if autoscaling is not enabled then we can manuaaly scale the pods up and down 
+kubectl scale deployment/<depl_name> --replicas=<no_of_instance_we_want>    
+e.g. kubectl scale deployment/techstackdemod --replicas=3   -> upscaling manually   -> check using kubectl get pods
+	 ubectl scale deployment/techstackdemod --replicas=1    -> downscaling manually
+
+UPDATING THE IMAGE   --->
+1. build the new image with code changes and then push it to dockerhub wih new tag name bcz only different tag name images will be pulled from docker hub while updating the
+deployment
+2. kubectl set image deployment/<depl_name> <current_container_name_where_image_needs_to_be_updated>=<new_image_name:tag_name>
+e.g. kubectl set image deployment/techstackdemod techstackdemo=akshaysu/techstackdemo:two
+3. then check whether this new image rollout is successful or not
+kubectl rollout status deployment/<depl_name>(techstackdemod)
+
+now suppose the new image update failed then how to go back to the old images and deploy them again
+1. kubectl rollout undo deployment/<depl_name>(techstackdemod)    --> this will undo the latest deployment
+2. kubectl rollout history deployment/<depl_name>(techstackdemod)    ---> gives history for that deployment with revision number and change cause, we can use this revison number
+    to go back to any older deployment and deploy it
+3. kubectl rollout history deployment/<depl_name>(techstackdemod) --revision=<revision_id>     --> see details of the revision
+4. kubectl rollout undo deployment/<depl_name>(techstackdemod) --to-revision=2    ---> deploy the old revision nunmber 2 
+
+for deleting deploymentas we need to delete the service first then the deployment
+kubectl delete service techstackdemod<servicename>
+then delete the deployment--> kubectl delete deployment techstackdemod<depl_name>
+
+
+DECLARATIVE APPROACH APPROACH TO K8S OBJECTS
+here similar to docker-compose we can define our target state for k8s using config.yml file and run it -->kubectl apply -f config.yml
+we can name this file anything lets name it as deployment.yml
+
+DEPLOYMENT OBJECT(RESOURCE)
+apiVersion: apps/v1         ->checkn in documentation which version to use based of which features to use
+kind: Deployment        ---> this will define what kind of object we want to create like Deployment,service,job etc
+metadata:               ---> mention crucial details for the k8s object we want to deploy like name, namespace, deletion time,clusterName etc
+  name: techstackdemod<depl_name>
+spec:                   ---> here we define how we would configure the deployment or the end state info
+  replicas: 2           --> no of pods to be launched.. default is 1
+  selector:             --> very important tag, here we will tell k8s that this particular object(deployment) will manage this selector tagged pods
+    matchLabels(matchExpressions):               
+	  app: techstackdemo      ---> here we told k8s that all the pods who have label as app and its value as techstackdemo should be controlled by this depl
+	  tier: backend           ---> here we told k8s that all the pods who have label as tier and its value as backend should be controlled by this depl 
+  template:             ---> here below this tag we define the pods which should be created as a part of this deployment, for deployment kind the template kind is pod implicitly 
+    metadata:          --->metadata for this pod
+	  labels:
+	    app: techstackdemo    --->this app can be replaced by any name like tier,depl whatever we want to call it bcz we are using it under labels
+		tier: backend
+	spec:                 ---> define how this pod/pods should be configured, one pod per deployment
+	  containers: 
+	    - name: techstackdemoc1     ---> name of the container
+		  image: akshaysu/techstackdemo     ->> this has to be docker hub name
+		- name: techstackdemoc2     
+		  image: akshaysu/techstackdemo     ->> this has to be docker hub name
+
+after writing this file run ---> kubectl apply -f deployment.yml<path_to_file>
+
+
+SERVICE OBJECT DECLARATIVE APPROACH
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend
+spec:
+  selector:               ----> here we will define which pods should be part of this service(to put thos pods in a set/group and assign IP to expose to outer world)
+    app: techstackdemo     ---> here Service object is very old object so the matchLabels is here by default so directly write the matchLabels' options
+    tier: backend         ---> means that all those pods who has these app=techstakdemo and tier=backend will be exposed by this particular service resource
+  ports:
+    - protocol: 'TCP'
+	  port: 80           -->outside world port
+	  targetPort: 8084   -->port inside the container/app/pod to be mapped to outside
+  type: ClusterIp/ NodePort/ LoadBalancer ----> any one which we want to use
+  
+kubectl apply -f Service.yml    ---> command is same as depl command bcz it looks into file at kind tag and then works accrodingly
+now as for local we need to again use other command to get the public IP   --> minikube service backend<name_of_service_in_config_file>   --> this will return IP for this service
+
+
+UPDATING & DELETING RESOURCES( deployment,service, etc) by DECLARATIVE APPROACH
+if we want to udpate anything just update the config file,save it and hit apply command
+to delete ---> kubectl delete -f=config_file.yml -f=deployment.yml    ----> this will not delete the file but will delete the resources mentioned in the file
+we can also combine deployment.yml and service.yml files in a single file by using --- as aseparator
+
+
+KUBERNETES STORAGE & DATA  ---USE OF VOLUMES
+volumne lifetime depends on pod life time as k8s creates volumes for pods,volumes are inside pod and outside the container, so volumes survive container restart or removal but 
+volumes are removed when pods are destroyed, by default. we can configure it to persist data
+k8s supports broad variety of volume drivers and types
+
+1. emptyDir volume type--    suitable for 1 replica
+we can define this in declarative way in config file of deployment object inside spec, parallel to containers tag
+containers:
+  - name: story
+    image: akshaysu/techstackdemo:one
+	volumeMounts:            --->here we specify which data we want to store in the volume
+	  - mountPath: /app/story        ---> so containers is storing some data here , now we will attach the created volume to this path
+	    name: story-volume           ---> so story-volume is attached to above mountpath
+volumes:
+  - name: story-volume
+    emptyDir: {}         ---> it sets up empty directory and stores out data there as long as pod is alive, it is removed and created as per the pod
+	
+but the down sde of this type is that it is attached to the pod, so if we have replicas and out one pod goes down and the request for out app go to  2nd runnign pod the data from the first pod will be lost
+
+2. hostPath --- suitable for multiple replicas
+here this type creates volume on the host machine and multiple pods or replicas share this volume space, hence it it suitable for node level volume
+containers:
+  - name: story
+    image: akshaysu/techstackdemo:one
+	volumeMounts:            --->here we specify which data we want to store in the volume
+	  - mountPath: /app/story        ---> so containers is storing some data here , now we will attach the created volume to this path
+	    name: story-volume           ---> so story-volume is attached to above mountpath
+volumes:
+  - name: story-volume
+    hostPath:
+	  path: /data                    --> path of the host machine where the volume should be created, it is like bind mount 
+	  type: DirectoryOrCreate        ---> if directory is not present then it will create, if we are sure directory is present then we can use Directory
+	  
+3. CSI type (Container Storage Interface)--
+we can chose this type when we have some storage service from any provider which is implementing this interface means is integrated using this interface in k8s
+one such example is AWS CSI EFS driver
+
+PERSISTENT VOLUMES--
+although the cloud providers give many options to make volumes pod and node independent, using k8s' persistent volumes we can make volumes creation centralized
+and we wont need to mention it in evry config file for deployment 
+so persistent volumes reside inside cluster paraller to nodes and each node will have persistent volume claim(PV Claim) which will connect persistent volume to that particular 
+worker node for storing that node's data
+we can define this in config file with hostPath type- and kind as PersistentVolume-> but this hostPath type here is only for single node and for testing purpose
+and inorder to access this PV we need to create claim also and it will be made by pods which want to use this PV
+the claim is also configured in yaml file as kind: PersistentVolumeClaim and then in the deployment.yml we need to map it to the pod by using PersistentVolumeClaim tag 
+inside volumes tag of the pod/container with nested tag as claimName: <created_PV_claim>
+
+there are also storage classes --> kubectl get sc   ->gives u the default storage class created by minikube
+storage classes are used by admins to conifgure storage classes and volumes
+
+for creating env vars as a file we can use king as ConfigMap
