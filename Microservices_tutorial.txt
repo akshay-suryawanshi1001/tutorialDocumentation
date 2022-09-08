@@ -1,0 +1,85 @@
+creat 3 projects
+create 1 more boot project with eureka-server dependency
+use eureka client dependency to register 3 boot projects as client for discovery(eureka) server to identify
+use @loadbalanced anno on restclient object,it will find the servoves by their app name from restemeplate itself
+
+Fault tolerant and resilinecy
+Fault tolerant--- what tolerance ur system has for a particular fault, e.g. if for multiple microservice instance ,what happens to ur system if one service goes down
+
+resilince--- how many fault ur system can bear or how much ur system bounce back after number of faults
+
+issues
+case 1: a MS instance goes down
+solution: have multiple instances
+
+case 2: MS intance is slow.. what to do then ? in MS even an unrelated MS can get slow bcz some other MS is slow bcz of threads in web server
+solution: assign timeouts to requests so that the threads executing those requests will be freed up ASAP ,increasing WS thread pool is not a solution
+
+how threads work in web server
+whenever new request comes, the WS create a thread and asks it to handle the request , after work done threads shuts down(terminates)
+when rate at which threads are being created and doing work and getting terminated is lower than the number of requests the WS is receiving then the slowness problem may arise in
+an unrelated MS also
+
+2 ways to set timeouts for MS requests 
+1. set the timeout in the web client object that u are using to call other MS--not an optimal solution
+2. is we detect that something is wrong in some MS ,then dont even call that MS for certain time then check again,here now circuit breaker comes into play i guess
+circuit breaket pattern-- steps i. detect something is wrong
+								ii. take temporary steps to avoid the situation getting worse
+								iii. deactivate the problem component so that it doesnt affect the downstream components
+3. bulkhead pattern--- convept of shipbuilding where experts build ship in comparment like ways at the bottom
+						similarly for MS we can have separate threadpool max size for each MS in web server we acn do this with or without hystrix also
+circuit breaker needs to have a smart trigger which justifies the problem cases and combination of problem types that when to break the circuit
+
+circuit breaker params--
+1. when does the circuit trip ?
+  a. last n erquests to consider for the decision
+  b. how manay of those should fail ?
+  c. timeout duration
+ 
+2. when does circuit un-trip/get back to normal (cool off time)
+	a. when does CB try again? (try again sending requests to problematic> MS)
+so we need to have a fallback mechanism for when the requests are coming in during the cool off period
+fallback type --> 1. throw an error (not recommended unless absolutely necessary)
+				  2. a fallback default response. (definitely recomm)
+				  3. sav previoud responses (cache) and use that when possible (cooler option)
+				
+Why cicuit breakers---
+1. failing fast (good thing)
+2. fallback functionality
+3. auto recovery(after the cool off period) 
+HYSTRIX is the framework we can use as a ciscuit breaker
+
+What is Hystrix
+It is an open source library originally created by Netflix 
+Implements circuit breaker pattern so you don’t have to
+Give it the configuration params and it does the work .
+Works very well with spring boot
+currently it is not under active development, but only being maintained, bcz their development goals have been met
+
+ADDING HYSTRIX TO SPRING BOOT MICROSERVICE (MS)
+1. add maven dependency to the project where we want hystrix  spring-cloud-started-netflix-hystrix
+2. Add @EnableCircuitbreaker to application class in spring boot project
+3. add @hystrixcommand to methods that need the circuit breakers---
+4. configure hystrix behaviour (like adding timeout and falback method(diff name but same method signature like call method for 3rd fallback type) and calling it in @hystrixcommand anno
+
+MICROSERVICES CONFIGURATION
+
+USING EXTERNAL PROPERTY SOURCES IN SPRING BOOT
+so if we create another app.prop file parallel to myApp.jat in /target folder and then run it like java -jar myApp.jar  --->this will now read the new app.prop file available on
+the same location and override the app.prop in the jar (automatically)
+we can override even this external file while running the app in CLI by mentionng the property as command line argument
+
+@value
+@configurationproperties ---> use when we want multiple values from property file and use it in the applcaition
+
+SPRING CLOUD CONFIG SERVER
+in order to keep multiple instance of a same MS consistent in terms of code , we should use a centralized configuration service as a separate MS so that all instance will ask from
+a single source of truth for config properties
+there are multiple tools for creating this config server
+1. apache zookeeper  --centralized sevice for maintainer config as a service
+2. ETCD distributed key-value store
+3. hashicorp consul
+4. spring cloud configuration server --- uses gitrepo for looking up the values for configs by default
+
+when we use spring cloud config server by creating a new MS as a config server we will need to have a client also to consume these configs, this new client will also be a MS
+we can call this as spring cloud config client, basically each MS will have to have code which fetches configs from spring cloud config server
